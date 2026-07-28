@@ -1,0 +1,7 @@
+interface:
+  display_name: "Smooth Hero Video"
+  short_description: "Make hero videos load first and play smoothly."
+  default_prompt: "Use $smooth-hero-video to make this website hero video load first and play smoothly."
+
+policy:
+  allow_implicit_invocation: true
