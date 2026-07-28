@@ -1,6 +1,6 @@
 ---
 name: smooth-hero-video
-description: Optimize website hero/background video loading and playback performance. Use when a site has slow, stuttering, delayed, blank, or non-prioritized autoplay video; when the user wants the first screen video to load before UI animations; or when canvas/WebGL, GSAP, ScrollTrigger, filters, overlays, posters, parallax, or large media assets compete with a hero video.
+description: Optimize website hero/background video loading and playback performance. Use when a site has slow, stuttering, delayed, blank, or non-prioritized autoplay video; when a small video still plays poorly because of codec, faststart, audio tracks, HEVC/H.265, or decode pressure; when the user wants the first screen video to load before UI animations; or when canvas/WebGL, GSAP, ScrollTrigger, filters, overlays, posters, parallax, or large media assets compete with a hero video.
 ---
 
 # Smooth Hero Video
@@ -49,12 +49,19 @@ setTimeout(reveal, 3500);
 ```
 
 4. Make the media web-friendly.
-   - Prefer MP4/H.264 for reliable autoplay compatibility.
+   - Prefer MP4/H.264 (`avc1`) for reliable autoplay compatibility.
+   - Treat HEVC/H.265 (`hvc1`/`hev1`) as risky for web hero backgrounds even when the file is small; unsupported or software-decoded HEVC can stutter badly.
    - For background video, target 720p or lower unless the design truly needs more detail.
    - Keep bitrate moderate and duration short enough for fast first load.
    - Put the MP4 `moov` atom at the beginning (`faststart`) so playback can begin before the full file downloads.
+   - Remove audio tracks from muted decorative background video.
+   - Prefer constant, modest frame rates such as 24 fps or 30 fps; avoid variable frame rate exports for hero backgrounds.
    - Add WebM only when it is generated reliably and tested; use MP4 as fallback.
    - Do not rely on browser `MediaRecorder` transcoding for production assets unless no media tooling is available and the user accepts an experimental result.
+
+```bash
+ffmpeg -i input.mp4 -vf "scale=-2:480,fps=30,format=yuv420p" -an -c:v libx264 -profile:v high -level 4.0 -preset slow -crf 23 -movflags +faststart hero-video.mp4
+```
 
 5. Reduce first-screen render pressure.
    - Remove CSS `filter`, `backdrop-filter`, heavy blur, and unnecessary blend layers from video-adjacent elements.
@@ -89,6 +96,18 @@ html {
    - Keep the video full-bleed or dominant if it is the hero.
    - Move dock cards, badges, and intro labels away from the highest-detail part of the video.
    - Use black load state plus delayed UI fade/reveal for a premium opening rather than showing unrelated static imagery first.
+
+## Small But Still Choppy
+
+When the user says the video is already small but still not smooth, do not assume network size is the bottleneck. Check these first:
+
+- **Codec**: `hvc1`/`hev1` means HEVC/H.265. Re-encode to H.264/AVC `avc1` for safer browser playback.
+- **Faststart**: if `moov` is after `mdat`, repackage with `-movflags +faststart`.
+- **Audio**: remove audio for muted background video with `-an`.
+- **Frame rate**: reduce to 24 or 30 fps and avoid variable frame rate.
+- **Decode pixels**: 480p can look acceptable for dark, full-screen motion backgrounds and is often smoother than 720p.
+- **Render competition**: even a good video can stutter when the hero also runs WebGL/canvas, blur, filter, backdrop-filter, large box shadows, or scrubbed parallax.
+- **Source shape**: if the video is mostly abstract motion, prefer a shorter seamless loop over a long clip.
 
 ## Verification
 
